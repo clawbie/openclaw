@@ -387,6 +387,7 @@ describe("handleDiscordMessageAction", () => {
           archived: true,
           locked: false,
           autoArchiveDuration: 1440,
+          appliedTags: ["tag1"],
         },
       },
       expected: {
@@ -395,6 +396,7 @@ describe("handleDiscordMessageAction", () => {
         archived: true,
         locked: false,
         autoArchiveDuration: 1440,
+        appliedTags: ["tag1"],
       },
     },
   ] as const;
