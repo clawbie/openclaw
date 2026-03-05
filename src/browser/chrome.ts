@@ -267,11 +267,25 @@ export async function launchOpenClawChrome(
     }
 
     // Stealth: hide navigator.webdriver from automation detection (#80)
+    // Newer Chromes show a warning for this unsupported switch.
+    // Allow users to opt out by adding "!--disable-blink-features=AutomationControlled" to browser.extraArgs.
     args.push("--disable-blink-features=AutomationControlled");
 
     // Append user-configured extra arguments (e.g., stealth flags, window size)
     if (resolved.extraArgs.length > 0) {
       args.push(...resolved.extraArgs);
+    }
+
+    // Users may want to explicitly remove the automation-controlled switch to avoid Chrome warnings.
+    // Support a best-effort negation convention: "!--flag".
+    // (Only applies to OpenClaw-added flags; we don't attempt to diff/normalize arbitrary args.)
+    for (const arg of resolved.extraArgs) {
+      if (arg === "!--disable-blink-features=AutomationControlled") {
+        const idx = args.indexOf("--disable-blink-features=AutomationControlled");
+        if (idx >= 0) {
+          args.splice(idx, 1);
+        }
+      }
     }
 
     // Always open a blank tab to ensure a target exists.
