@@ -1142,7 +1142,9 @@ export const chatHandlers: GatewayRequestHandlers = {
       storePath,
       sessionFile: entry?.sessionFile,
       agentId: resolveSessionAgentId({ sessionKey: rawSessionKey, config: cfg }),
-      createIfMissing: false,
+      // If a session entry points at a transcriptPath but the file doesn't exist yet
+      // (common for ACP oneshot/run sessions), ensure we create it rather than hard-fail.
+      createIfMissing: true,
     });
     if (!appended.ok || !appended.messageId || !appended.message) {
       respond(
