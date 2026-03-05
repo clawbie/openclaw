@@ -1,7 +1,7 @@
 import { Routes } from "discord-api-types/v10";
 import { describe, expect, it } from "vitest";
-import { editChannelDiscord } from "./send.channels.js";
-import { makeDiscordRest } from "./send.test-harness.js";
+import { editChannelDiscord } from "../../src/discord/send.channels.js";
+import { makeDiscordRest } from "../../src/discord/send.test-harness.js";
 
 describe("editChannelDiscord", () => {
   it("passes applied_tags when appliedTags is provided", async () => {
