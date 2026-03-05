@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { validateChatSendParams } from "../protocol/index.js";
-import { GATEWAY_CLIENT_MODES } from "../../utils/message-channel.js";
+import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../../utils/message-channel.js";
 
 // This test covers a routing regression where TUI connections were treated as UI clients,
 // causing `chat.send` to refuse inheriting deliverable routes on configured main sessions.
@@ -71,7 +71,7 @@ describe("chat.send routing (tui --deliver)", () => {
         connect: {
           client: {
             mode: GATEWAY_CLIENT_MODES.CLI,
-            id: "openclaw-tui",
+            id: GATEWAY_CLIENT_NAMES.GATEWAY_CLIENT,
           },
         },
       },
