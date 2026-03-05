@@ -71,6 +71,7 @@ describe("handleSlackAction", () => {
   function expectLastSlackSend(content: string, threadTs?: string) {
     expect(sendSlackMessage).toHaveBeenLastCalledWith("channel:C123", content, {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs,
       blocks: undefined,
     });
@@ -191,7 +192,28 @@ describe("handleSlackAction", () => {
     );
     expect(sendSlackMessage).toHaveBeenCalledWith("channel:C123", "Hello thread", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: "1234567890.123456",
+      blocks: undefined,
+    });
+  });
+
+  it("passes mediaLocalRoots to sendSlackMessage for outbound media", async () => {
+    await handleSlackAction(
+      {
+        action: "sendMessage",
+        to: "channel:C123",
+        content: "caption",
+        mediaUrl: "/tmp/report.pdf",
+        mediaLocalRoots: ["/tmp"],
+      },
+      slackConfig(),
+    );
+
+    expect(sendSlackMessage).toHaveBeenCalledWith("channel:C123", "caption", {
+      mediaUrl: "/tmp/report.pdf",
+      mediaLocalRoots: ["/tmp"],
+      threadTs: undefined,
       blocks: undefined,
     });
   });
@@ -267,6 +289,7 @@ describe("handleSlackAction", () => {
     );
     expect(sendSlackMessage).toHaveBeenCalledWith("channel:C123", "", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: undefined,
       blocks: expectedBlocks,
     });
@@ -377,6 +400,7 @@ describe("handleSlackAction", () => {
     );
     expect(sendSlackMessage).toHaveBeenCalledWith("channel:C123", "Auto-threaded", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: "1111111111.111111",
       blocks: undefined,
     });
@@ -427,6 +451,7 @@ describe("handleSlackAction", () => {
     });
     expect(sendSlackMessage).toHaveBeenCalledWith("channel:C123", "No ref", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: undefined,
       blocks: undefined,
     });
@@ -450,6 +475,7 @@ describe("handleSlackAction", () => {
     );
     expect(sendSlackMessage).toHaveBeenCalledWith("channel:C123", "Off mode", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: undefined,
       blocks: undefined,
     });
@@ -473,6 +499,7 @@ describe("handleSlackAction", () => {
     );
     expect(sendSlackMessage).toHaveBeenCalledWith("channel:C999", "Different channel", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: undefined,
       blocks: undefined,
     });
@@ -497,6 +524,7 @@ describe("handleSlackAction", () => {
     );
     expect(sendSlackMessage).toHaveBeenCalledWith("channel:C123", "Explicit thread", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: "2222222222.222222",
       blocks: undefined,
     });
@@ -520,6 +548,7 @@ describe("handleSlackAction", () => {
     );
     expect(sendSlackMessage).toHaveBeenCalledWith("C123", "No prefix", {
       mediaUrl: undefined,
+      mediaLocalRoots: undefined,
       threadTs: "1111111111.111111",
       blocks: undefined,
     });
