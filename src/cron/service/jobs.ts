@@ -694,6 +694,9 @@ function mergeCronPayload(existing: CronPayload, patch: CronPayloadPatch): CronP
   if (typeof patch.bestEffortDeliver === "boolean") {
     next.bestEffortDeliver = patch.bestEffortDeliver;
   }
+  if (Array.isArray(patch.fallbacks)) {
+    next.fallbacks = patch.fallbacks;
+  }
   return next;
 }
 
@@ -754,6 +757,7 @@ function buildPayloadFromPatch(patch: CronPayloadPatch): CronPayload {
     kind: "agentTurn",
     message: patch.message,
     model: patch.model,
+    fallbacks: Array.isArray(patch.fallbacks) ? patch.fallbacks : undefined,
     thinking: patch.thinking,
     timeoutSeconds: patch.timeoutSeconds,
     lightContext: patch.lightContext,
