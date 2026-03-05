@@ -67,6 +67,38 @@ metadata: |
 
         self.assertTrue(valid, message)
 
+    def test_rejects_empty_name(self):
+        skill_dir = self.temp_dir / "empty-name"
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        content = """---
+name:
+description: ok
+---
+# Skill
+"""
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+
+        valid, message = quick_validate.validate_skill(skill_dir)
+
+        self.assertFalse(valid)
+        self.assertEqual(message, "Name cannot be empty")
+
+    def test_rejects_empty_description(self):
+        skill_dir = self.temp_dir / "empty-description"
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        content = """---
+name: empty-description
+description:
+---
+# Skill
+"""
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+
+        valid, message = quick_validate.validate_skill(skill_dir)
+
+        self.assertFalse(valid)
+        self.assertEqual(message, "Description cannot be empty")
+
 
 if __name__ == "__main__":
     main()
