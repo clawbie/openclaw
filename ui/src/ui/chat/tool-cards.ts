@@ -149,6 +149,25 @@ function extractToolText(item: Record<string, unknown>): string | undefined {
   if (typeof item.text === "string") {
     return item.text;
   }
+  // Some gateway/websocket toolResult payloads nest output under content blocks
+  // (e.g. `content[0].text`). Support that shape so the UI doesn't show
+  // "No output" when stdout is present.  (#38223)
+  if (Array.isArray(item.content)) {
+    const parts = item.content
+      .map((p) => {
+        const block = p as Record<string, unknown>;
+        if (block.type === "text" && typeof block.text === "string") {
+          return block.text;
+        }
+        return null;
+      })
+      .filter((v): v is string => typeof v === "string")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (parts.length > 0) {
+      return parts.join("\n");
+    }
+  }
   if (typeof item.content === "string") {
     return item.content;
   }
