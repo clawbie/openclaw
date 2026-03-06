@@ -267,6 +267,9 @@ describe("handleFeishuMessage command authorization", () => {
         CommandAuthorized: false,
         SenderId: "ou-attacker",
         Surface: "feishu",
+        // Used for outbound reply routing.
+        To: "feishu:ou-attacker",
+        OriginatingTo: "feishu:ou-attacker",
       }),
     );
   });

@@ -1153,7 +1153,10 @@ export async function handleFeishuMessage(params: {
     // In group chats, the session is scoped to the group, but the *speaker* is the sender.
     // Using a group-scoped From causes the agent to treat different users as the same person.
     const feishuFrom = `feishu:${ctx.senderOpenId}`;
-    const feishuTo = isGroup ? `chat:${ctx.chatId}` : `user:${ctx.senderOpenId}`;
+    // `To` / `OriginatingTo` is used to derive reply routing. It must use the
+    // channel-qualified prefix (e.g. `feishu:...`) instead of the generic
+    // `user:` prefix, otherwise outbound delivery cannot resolve the send target.
+    const feishuTo = isGroup ? `feishu:group:${ctx.chatId}` : `feishu:${ctx.senderOpenId}`;
     const peerId = isGroup ? (groupSession?.peerId ?? ctx.chatId) : ctx.senderOpenId;
     const parentPeer = isGroup ? (groupSession?.parentPeer ?? null) : null;
     const replyInThread = isGroup ? (groupSession?.replyInThread ?? false) : false;
