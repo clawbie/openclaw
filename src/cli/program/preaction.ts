@@ -126,7 +126,16 @@ export function registerPreActionHooks(program: Command, programVersion: string)
     if (shouldBypassConfigGuard(commandPath)) {
       return;
     }
-    const suppressDoctorStdout = isJsonOutputMode(commandPath, argv);
+
+    const jsonOutputMode = isJsonOutputMode(commandPath, argv);
+    if (jsonOutputMode) {
+      // Keep stdout clean in JSON mode so startup/plugin logs do not corrupt
+      // machine-readable output.
+      const { routeLogsToStderr } = await import("../../logging/console.js");
+      routeLogsToStderr();
+    }
+
+    const suppressDoctorStdout = jsonOutputMode;
     const { ensureConfigReady } = await loadConfigGuardModule();
     await ensureConfigReady({
       runtime: defaultRuntime,
