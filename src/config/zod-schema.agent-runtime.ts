@@ -680,7 +680,7 @@ export const MemorySearchSchema = z
   .optional();
 export { AgentModelSchema };
 
-const AgentRuntimeAcpSchema = z
+export const AgentRuntimeAcpSchema = z
   .object({
     agent: z.string().optional(),
     backend: z.string().optional(),
@@ -690,7 +690,7 @@ const AgentRuntimeAcpSchema = z
   .strict()
   .optional();
 
-const AgentRuntimeSchema = z
+export const AgentRuntimeSchema = z
   .union([
     z
       .object({
