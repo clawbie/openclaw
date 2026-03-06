@@ -76,9 +76,9 @@ export function createDiscordMessageHandler(
       if (!message) {
         return false;
       }
-      const baseText = resolveDiscordMessageText(message, { includeForwarded: false });
+      const text = resolveDiscordMessageText(message, { includeForwarded: true });
       return shouldDebounceTextInbound({
-        text: baseText,
+        text,
         cfg: params.cfg,
         hasMedia: Boolean(
           (message.attachments && message.attachments.length > 0) ||
@@ -110,13 +110,13 @@ export function createDiscordMessageHandler(
         inboundWorker.enqueue(buildDiscordInboundJob(ctx));
         return;
       }
-      const combinedBaseText = entries
-        .map((entry) => resolveDiscordMessageText(entry.data.message, { includeForwarded: false }))
+      const combinedText = entries
+        .map((entry) => resolveDiscordMessageText(entry.data.message, { includeForwarded: true }))
         .filter(Boolean)
         .join("\n");
       const syntheticMessage = {
         ...last.data.message,
-        content: combinedBaseText,
+        content: combinedText,
         attachments: [],
         message_snapshots: (last.data.message as { message_snapshots?: unknown }).message_snapshots,
         messageSnapshots: (last.data.message as { messageSnapshots?: unknown }).messageSnapshots,

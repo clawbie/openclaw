@@ -84,6 +84,36 @@ function createMessageData(messageId: string, channelId = "ch-1") {
   };
 }
 
+function createForwardedOnlyMessageData(messageId: string, channelId = "ch-1") {
+  return {
+    channel_id: channelId,
+    author: { id: "user-1" },
+    message: {
+      id: messageId,
+      author: { id: "user-1", bot: false },
+      content: "",
+      channel_id: channelId,
+      attachments: [],
+      rawData: {
+        message_snapshots: [
+          {
+            message: {
+              content: "forwarded hello",
+              embeds: [],
+              attachments: [],
+              author: {
+                id: "u2",
+                username: "Bob",
+                discriminator: "0",
+              },
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
 function createPreflightContext(channelId = "ch-1") {
   return {
     data: {
@@ -108,6 +138,26 @@ function createPreflightContext(channelId = "ch-1") {
 }
 
 describe("createDiscordMessageHandler queue behavior", () => {
+  it("does not drop forwarded-only messages at the debounce layer", async () => {
+    preflightDiscordMessageMock.mockReset();
+    processDiscordMessageMock.mockReset();
+
+    preflightDiscordMessageMock.mockImplementation(async () => createPreflightContext("ch-1"));
+
+    const params = createHandlerParams();
+    // Ensure the debounce layer is exercised (it would be bypassed with debounceMs=0).
+    params.cfg.messages = { inbound: { debounceMs: 10 } };
+    const handler = createDiscordMessageHandler(params);
+
+    await expect(
+      handler(createForwardedOnlyMessageData("m-fwd") as never, {} as never),
+    ).resolves.toBeUndefined();
+
+    await vi.waitFor(() => {
+      expect(preflightDiscordMessageMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("resets busy counters when the handler is created", () => {
     preflightDiscordMessageMock.mockReset();
     processDiscordMessageMock.mockReset();
