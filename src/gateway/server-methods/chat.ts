@@ -258,12 +258,25 @@ function sanitizeChatHistoryMessages(messages: unknown[]): unknown[] {
   for (const message of messages) {
     const res = sanitizeChatHistoryMessage(message);
     changed ||= res.changed;
+
+    // Drop internal assistant messages that are only meant for transcript bookkeeping.
+    // Example: provider=openclaw, model=delivery-mirror entries mirror delivered messages
+    // into the transcript, but should not be rendered as user-visible assistant messages.
+    if (res.message && typeof res.message === "object") {
+      const entry = res.message as { role?: unknown; provider?: unknown; model?: unknown };
+      if (entry.role === "assistant" && entry.provider === "openclaw" && entry.model === "delivery-mirror") {
+        changed = true;
+        continue;
+      }
+    }
+
     // Drop assistant messages whose entire visible text is the silent reply token.
     const text = extractAssistantTextForSilentCheck(res.message);
     if (text !== undefined && isSilentReplyText(text, SILENT_REPLY_TOKEN)) {
       changed = true;
       continue;
     }
+
     next.push(res.message);
   }
   return changed ? next : messages;

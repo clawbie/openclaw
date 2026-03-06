@@ -466,6 +466,33 @@ describe("gateway server chat", () => {
     ]);
   });
 
+  test("chat.history hides internal delivery-mirror transcript entries", async () => {
+    const historyMessages = await loadChatHistoryWithMessages([
+      {
+        role: "user",
+        content: [{ type: "text", text: "hello" }],
+        timestamp: 1,
+      },
+      {
+        role: "assistant",
+        provider: "openclaw",
+        model: "delivery-mirror",
+        content: [{ type: "text", text: "same reply" }],
+        timestamp: 2,
+      },
+      {
+        role: "assistant",
+        provider: "openrouter",
+        model: "anthropic/claude-3.5-sonnet",
+        content: [{ type: "text", text: "same reply" }],
+        timestamp: 3,
+      },
+    ]);
+
+    const textValues = collectHistoryTextValues(historyMessages);
+    expect(textValues).toEqual(["hello", "same reply"]);
+  });
+
   test("agent.wait resolves chat.send runs that finish without lifecycle events", async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-gw-"));
     try {
