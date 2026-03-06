@@ -58,6 +58,9 @@ const TRANSIENT_NETWORK_MESSAGE_SNIPPETS = [
   "network error",
   "network is unreachable",
   "temporary failure in name resolution",
+  // Node/undici can wrap network errors as a generic Error with this message fragment.
+  // Example: "Failed to get gateway information from Discord: fetch failed" (see #37375).
+  "fetch failed",
 ];
 
 function getErrorCause(err: unknown): unknown {
