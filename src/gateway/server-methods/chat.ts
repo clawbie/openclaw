@@ -249,6 +249,17 @@ function extractAssistantTextForSilentCheck(message: unknown): string | undefine
   return texts.length > 0 ? texts.join("\n") : undefined;
 }
 
+function isAssistantDeliveryMirrorTranscriptEntry(message: unknown): boolean {
+  if (!message || typeof message !== "object") {
+    return false;
+  }
+  const entry = message as Record<string, unknown>;
+  if (entry.role !== "assistant") {
+    return false;
+  }
+  return entry.provider === "openclaw" && entry.model === "delivery-mirror";
+}
+
 function sanitizeChatHistoryMessages(messages: unknown[]): unknown[] {
   if (messages.length === 0) {
     return messages;
@@ -258,6 +269,13 @@ function sanitizeChatHistoryMessages(messages: unknown[]): unknown[] {
   for (const message of messages) {
     const res = sanitizeChatHistoryMessage(message);
     changed ||= res.changed;
+
+    // Drop internal transcript mirror messages (used for delivery bookkeeping) from history.
+    if (isAssistantDeliveryMirrorTranscriptEntry(res.message)) {
+      changed = true;
+      continue;
+    }
+
     // Drop assistant messages whose entire visible text is the silent reply token.
     const text = extractAssistantTextForSilentCheck(res.message);
     if (text !== undefined && isSilentReplyText(text, SILENT_REPLY_TOKEN)) {
