@@ -76,13 +76,13 @@ describe("windows command wrapper behavior", () => {
   afterEach(() => {
     spawnMock.mockReset();
     execFileMock.mockReset();
+    existsSyncMock.mockReset();
     vi.restoreAllMocks();
   });
 
   it("quotes args and enables windowsVerbatimArguments for node + npm-cli.js when argv contains spaces", async () => {
     const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
     const comspec = process.env.ComSpec ?? "cmd.exe";
-
 
     existsSyncMock.mockReturnValue(true);
 
