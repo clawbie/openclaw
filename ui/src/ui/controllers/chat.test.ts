@@ -501,6 +501,7 @@ describe("loadChatHistory", () => {
       { role: "assistant", content: [{ type: "text", text: "NO_REPLY" }] },
       { role: "assistant", content: [{ type: "text", text: "Real answer" }] },
       { role: "assistant", text: "  NO_REPLY  " },
+      { role: "assistant", provider: "openclaw", model: "delivery-mirror", content: [{ type: "text", text: "Real answer" }] },
     ];
     const mockClient = {
       request: vi.fn().mockResolvedValue({ messages, thinkingLevel: "low" }),

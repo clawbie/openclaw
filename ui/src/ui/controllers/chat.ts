@@ -26,6 +26,22 @@ function isAssistantSilentReply(message: unknown): boolean {
   return typeof text === "string" && isSilentReplyStream(text);
 }
 
+function isAssistantDeliveryMirror(message: unknown): boolean {
+  if (!message || typeof message !== "object") {
+    return false;
+  }
+  const entry = message as Record<string, unknown>;
+  const role = typeof entry.role === "string" ? entry.role.toLowerCase() : "";
+  if (role !== "assistant") {
+    return false;
+  }
+  // Internal transcript entries used to mirror delivered output into the session transcript.
+  // These should not render as normal assistant messages in WebChat.
+  //
+  // See: src/config/sessions/transcript.ts (provider=openclaw, model=delivery-mirror)
+  return entry.provider === "openclaw" && entry.model === "delivery-mirror";
+}
+
 export type ChatState = {
   client: GatewayBrowserClient | null;
   connected: boolean;
@@ -65,7 +81,9 @@ export async function loadChatHistory(state: ChatState) {
       },
     );
     const messages = Array.isArray(res.messages) ? res.messages : [];
-    state.chatMessages = messages.filter((message) => !isAssistantSilentReply(message));
+    state.chatMessages = messages.filter(
+      (message) => !isAssistantSilentReply(message) && !isAssistantDeliveryMirror(message),
+    );
     state.chatThinkingLevel = res.thinkingLevel ?? null;
   } catch (err) {
     state.lastError = String(err);
