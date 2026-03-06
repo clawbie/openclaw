@@ -42,6 +42,7 @@ function makeModelsResponse(id: string): Response {
             name: id,
             privacy: "private",
             availableContextTokens: 131072,
+            maxCompletionTokens: 4096,
             capabilities: {
               supportsReasoning: false,
               supportsVision: false,
@@ -92,6 +93,7 @@ describe("venice-models", () => {
     const models = await runWithDiscoveryEnabled(() => discoverVeniceModels());
     expect(attempts).toBe(3);
     expect(models.map((m) => m.id)).toContain("llama-3.3-70b");
+    expect(models.find((m) => m.id === "llama-3.3-70b")?.maxTokens).toBe(4096);
   });
 
   it("falls back to static catalog after retry budget is exhausted", async () => {

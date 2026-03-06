@@ -335,6 +335,7 @@ interface VeniceModelSpec {
   name: string;
   privacy: "private" | "anonymized";
   availableContextTokens: number;
+  maxCompletionTokens?: number;
   capabilities: {
     supportsReasoning: boolean;
     supportsVision: boolean;
@@ -469,8 +470,16 @@ export async function discoverVeniceModels(): Promise<ModelDefinitionConfig[]> {
     for (const apiModel of data.data) {
       const catalogEntry = catalogById.get(apiModel.id);
       if (catalogEntry) {
-        // Use catalog metadata for known models
-        models.push(buildVeniceModelDefinition(catalogEntry));
+        // Use catalog metadata for known models, but prefer the API's per-model
+        // maxCompletionTokens ceiling when available to avoid hard-coded defaults
+        // that can trigger HTTP 400 errors.
+        const def = buildVeniceModelDefinition(catalogEntry);
+        if (typeof apiModel.model_spec.maxCompletionTokens === "number" &&
+            Number.isFinite(apiModel.model_spec.maxCompletionTokens) &&
+            apiModel.model_spec.maxCompletionTokens > 0) {
+          def.maxTokens = apiModel.model_spec.maxCompletionTokens;
+        }
+        models.push(def);
       } else {
         // Create definition for newly discovered models not in catalog
         const isReasoning =
@@ -488,7 +497,10 @@ export async function discoverVeniceModels(): Promise<ModelDefinitionConfig[]> {
           input: hasVision ? ["text", "image"] : ["text"],
           cost: VENICE_DEFAULT_COST,
           contextWindow: apiModel.model_spec.availableContextTokens || 128000,
-          maxTokens: 8192,
+          // Venice exposes per-model completion token ceilings via maxCompletionTokens.
+          // When discovery is enabled, use that value to avoid hard-coded defaults
+          // that can trigger HTTP 400 errors.
+          maxTokens: apiModel.model_spec.maxCompletionTokens || 8192,
           // Avoid usage-only streaming chunks that can break OpenAI-compatible parsers.
           compat: {
             supportsUsageInStreaming: false,
