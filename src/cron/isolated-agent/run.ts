@@ -120,7 +120,13 @@ export async function runCronIsolatedAgentTurn(params: {
   const agentConfigOverride = normalizedRequested
     ? resolveAgentConfig(params.cfg, normalizedRequested)
     : undefined;
-  const { model: overrideModel, ...agentOverrideRest } = agentConfigOverride ?? {};
+  // IMPORTANT: avoid shallow-merging `sandbox` from the agent override into
+  // agents.defaults. `resolveSandboxConfigForAgent()` already handles merging
+  // defaults + per-agent sandbox config correctly. Shallow-merging here causes
+  // nested defaults like sandbox.docker.dangerouslyAllow* to be dropped for
+  // isolated cron sessions (#38067).
+  const { model: overrideModel, sandbox: _sandboxOverride, ...agentOverrideRest } =
+    agentConfigOverride ?? {};
   // Use the requested agentId even when there is no explicit agent config entry.
   // This ensures auth-profiles, workspace, and agentDir all resolve to the
   // correct per-agent paths (e.g. ~/.openclaw/agents/<agentId>/agent/).
