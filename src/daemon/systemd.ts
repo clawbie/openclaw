@@ -207,7 +207,7 @@ function resolveSystemctlMachineUserScopeArgs(user: string): string[] {
   return ["--machine", `${trimmedUser}@`, "--user"];
 }
 
-function shouldFallbackToMachineUserScope(detail: string): boolean {
+export function shouldFallbackToMachineUserScope(detail: string): boolean {
   const normalized = detail.toLowerCase();
   return (
     normalized.includes("failed to connect to bus") ||
@@ -430,7 +430,14 @@ export async function isSystemdServiceEnabled(args: GatewayServiceEnvArgs): Prom
     return true;
   }
   const detail = readSystemctlDetail(res);
-  if (isSystemctlMissing(detail) || isSystemdUnitNotEnabled(detail)) {
+  // During initial provisioning (e.g. sudo -u openclaw, Ansible), the user systemd
+  // manager may not be reachable yet. Treat this as "not enabled" so onboarding
+  // can proceed to install/enable the unit.
+  if (
+    isSystemctlMissing(detail) ||
+    isSystemdUnitNotEnabled(detail) ||
+    shouldFallbackToMachineUserScope(detail)
+  ) {
     return false;
   }
   throw new Error(`systemctl is-enabled unavailable: ${detail || "unknown error"}`.trim());
