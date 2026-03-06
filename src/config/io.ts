@@ -548,13 +548,45 @@ function warnOnConfigMiskeys(raw: unknown, logger: Pick<typeof console, "warn">)
   if (!raw || typeof raw !== "object") {
     return;
   }
-  const gateway = (raw as Record<string, unknown>).gateway;
-  if (!gateway || typeof gateway !== "object") {
+
+  const obj = raw as Record<string, unknown>;
+
+  const gateway = obj.gateway;
+  if (gateway && typeof gateway === "object" && !Array.isArray(gateway)) {
+    if ("token" in (gateway as Record<string, unknown>)) {
+      logger.warn(
+        'Config uses "gateway.token". This key is ignored; use "gateway.auth.token" instead.',
+      );
+    }
+  }
+
+  // Common misconfig: Feishu plugin credentials placed under plugin config.
+  // The Feishu plugin uses channels.feishu for credentials; plugin config does not accept appId/appSecret.
+  const plugins = obj.plugins;
+  if (!plugins || typeof plugins !== "object" || Array.isArray(plugins)) {
     return;
   }
-  if ("token" in (gateway as Record<string, unknown>)) {
+  const entries = (plugins as Record<string, unknown>).entries;
+  if (!entries || typeof entries !== "object" || Array.isArray(entries)) {
+    return;
+  }
+
+  const feishuEntry = (entries as Record<string, unknown>)["feishu-openclaw-plugin"];
+  if (!feishuEntry || typeof feishuEntry !== "object" || Array.isArray(feishuEntry)) {
+    return;
+  }
+  const cfg = (feishuEntry as Record<string, unknown>).config;
+  if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) {
+    return;
+  }
+
+  const cfgObj = cfg as Record<string, unknown>;
+  const hasAppId = typeof cfgObj.appId === "string" && cfgObj.appId.trim().length > 0;
+  const hasAppSecret = typeof cfgObj.appSecret === "string" && cfgObj.appSecret.trim().length > 0;
+  if (hasAppId || hasAppSecret) {
     logger.warn(
-      'Config uses "gateway.token". This key is ignored; use "gateway.auth.token" instead.',
+      'Config uses "plugins.entries.feishu-openclaw-plugin.config" for Feishu credentials. ' +
+        'Move appId/appSecret to "channels.feishu" instead (plugin config does not accept these keys).',
     );
   }
 }
