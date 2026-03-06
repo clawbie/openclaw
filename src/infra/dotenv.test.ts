@@ -48,6 +48,41 @@ async function withDotEnvFixture(run: (fixture: DotEnvFixture) => Promise<void>)
 }
 
 describe("loadDotEnv", () => {
+  it("expands env references within the same file", async () => {
+    await withIsolatedEnvAndCwd(async () => {
+      await withDotEnvFixture(async ({ cwdDir }) => {
+        await writeEnvFile(path.join(cwdDir, ".env"), "BASE=sk-test\nALIAS=${BASE}\nALIAS2=$BASE\n");
+        process.chdir(cwdDir);
+        delete process.env.BASE;
+        delete process.env.ALIAS;
+        delete process.env.ALIAS2;
+
+        loadDotEnv({ quiet: true });
+
+        expect(process.env.ALIAS).toBe("sk-test");
+        expect(process.env.ALIAS2).toBe("sk-test");
+      });
+    });
+  });
+
+  it("expands fallback file references using shell/env precedence", async () => {
+    await withIsolatedEnvAndCwd(async () => {
+      await withDotEnvFixture(async ({ cwdDir, stateDir }) => {
+        await writeEnvFile(path.join(stateDir, ".env"), "BASE=from-global\nALIAS=${BASE}\n");
+        // CWD file sets BASE, and fallback ALIAS should expand to that.
+        await writeEnvFile(path.join(cwdDir, ".env"), "BASE=from-cwd\n");
+
+        process.chdir(cwdDir);
+        delete process.env.BASE;
+        delete process.env.ALIAS;
+
+        loadDotEnv({ quiet: true });
+
+        expect(process.env.ALIAS).toBe("from-cwd");
+      });
+    });
+  });
+
   it("loads ~/.openclaw/.env as fallback without overriding CWD .env", async () => {
     await withIsolatedEnvAndCwd(async () => {
       await withDotEnvFixture(async ({ cwdDir, stateDir }) => {
