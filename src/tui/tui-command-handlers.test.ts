@@ -32,6 +32,7 @@ function createHarness(params?: {
       sessionInfo: {},
     } as never,
     deliverDefault: false,
+    setDeliverDefault: vi.fn(),
     openOverlay: vi.fn(),
     closeOverlay: vi.fn(),
     refreshSessionInfo: vi.fn(),

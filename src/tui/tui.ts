@@ -318,7 +318,8 @@ export async function runTui(opts: TuiOptions) {
   let pairingHintShown = false;
   const localRunIds = new Set<string>();
 
-  const deliverDefault = opts.deliver ?? false;
+  // Default deliver behavior for this TUI session (can be toggled via /settings).
+  let deliverDefault = opts.deliver ?? false;
   const autoMessage = opts.message?.trim();
   let autoMessageSent = false;
   let sessionInfo: SessionInfo = {};
@@ -806,6 +807,9 @@ export async function runTui(opts: TuiOptions) {
       opts,
       state,
       deliverDefault,
+      setDeliverDefault: (next: boolean) => {
+        deliverDefault = next;
+      },
       openOverlay,
       closeOverlay,
       refreshSessionInfo,

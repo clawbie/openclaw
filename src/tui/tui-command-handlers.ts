@@ -31,6 +31,7 @@ type CommandHandlerContext = {
   opts: TuiOptions;
   state: TuiStateAccess;
   deliverDefault: boolean;
+  setDeliverDefault: (next: boolean) => void;
   openOverlay: (component: Component) => void;
   closeOverlay: () => void;
   refreshSessionInfo: () => Promise<void>;
@@ -54,6 +55,7 @@ export function createCommandHandlers(context: CommandHandlerContext) {
     opts,
     state,
     deliverDefault,
+    setDeliverDefault,
     openOverlay,
     closeOverlay,
     refreshSessionInfo,
@@ -198,6 +200,12 @@ export function createCommandHandlers(context: CommandHandlerContext) {
   const openSettings = () => {
     const items = [
       {
+        id: "deliver",
+        label: "Deliver replies",
+        currentValue: deliverDefault ? "on" : "off",
+        values: ["off", "on"],
+      },
+      {
         id: "tools",
         label: "Tool output",
         currentValue: state.toolsExpanded ? "expanded" : "collapsed",
@@ -213,6 +221,9 @@ export function createCommandHandlers(context: CommandHandlerContext) {
     const settings = createSettingsList(
       items,
       (id, value) => {
+        if (id === "deliver") {
+          setDeliverDefault(value === "on");
+        }
         if (id === "tools") {
           state.toolsExpanded = value === "expanded";
           chatLog.setToolsExpanded(state.toolsExpanded);
