@@ -230,6 +230,48 @@ async function optimizeImageWithFallback(params: {
   return { ...optimized, format: "jpeg" };
 }
 
+async function resolveRelativeLocalMediaPathAgainstRoots(
+  mediaPath: string,
+  localRoots: readonly string[] | "any" | undefined,
+): Promise<string> {
+  if (localRoots === "any") {
+    return mediaPath;
+  }
+  if (path.isAbsolute(mediaPath)) {
+    return mediaPath;
+  }
+  const roots = localRoots ?? getDefaultLocalRoots();
+  for (const root of roots) {
+    let resolvedRoot: string;
+    try {
+      resolvedRoot = await fs.realpath(root);
+    } catch {
+      resolvedRoot = path.resolve(root);
+    }
+    // Skip filesystem root entries (these are invalid localRoots and will be rejected later).
+    if (resolvedRoot === path.parse(resolvedRoot).root) {
+      continue;
+    }
+
+    const candidate = path.resolve(resolvedRoot, mediaPath);
+    const rel = path.relative(resolvedRoot, candidate);
+    if (!rel || (!rel.startsWith("..") && !path.isAbsolute(rel))) {
+      try {
+        const stat = await fs.stat(candidate);
+        if (stat.isFile()) {
+          if (shouldLogVerbose()) {
+            logVerbose(`Resolved relative media path ${JSON.stringify(mediaPath)} against ${JSON.stringify(resolvedRoot)} -> ${JSON.stringify(candidate)}`);
+          }
+          return candidate;
+        }
+      } catch {
+        // Ignore missing candidates; keep searching roots.
+      }
+    }
+  }
+  return mediaPath;
+}
+
 async function loadWebMediaInternal(
   mediaUrl: string,
   options: WebMediaOptions = {},
@@ -340,6 +382,13 @@ async function loadWebMediaInternal(
   // Expand tilde paths to absolute paths (e.g., ~/Downloads/photo.jpg)
   if (mediaUrl.startsWith("~")) {
     mediaUrl = resolveUserPath(mediaUrl);
+  }
+
+  // Relative paths are ambiguous if resolved against process.cwd().
+  // When local root validation is active, try resolving the relative path
+  // against configured allowed roots first.
+  if (!path.isAbsolute(mediaUrl)) {
+    mediaUrl = await resolveRelativeLocalMediaPathAgainstRoots(mediaUrl, localRoots);
   }
 
   if ((sandboxValidated || localRoots === "any") && !readFileOverride) {
