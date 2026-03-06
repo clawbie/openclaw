@@ -12,7 +12,21 @@ import {
   type OpenClawConfig,
   type ChannelSetupInput,
 } from "openclaw/plugin-sdk/nextcloud-talk";
-import { waitForAbortSignal } from "../../../src/infra/abort-signal.js";
+// NOTE: This extension is published inside the openclaw npm package, but the package
+// does not ship the top-level src/ tree. Avoid reaching into ../../../src/* from here.
+// Keep a tiny local helper instead of importing from src/infra/abort-signal.
+async function waitForAbortSignal(signal?: AbortSignal): Promise<void> {
+  if (!signal || signal.aborted) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    const onAbort = () => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 import {
   listNextcloudTalkAccountIds,
   resolveDefaultNextcloudTalkAccountId,
