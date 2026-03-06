@@ -149,8 +149,28 @@ function extractToolText(item: Record<string, unknown>): string | undefined {
   if (typeof item.text === "string") {
     return item.text;
   }
-  if (typeof item.content === "string") {
-    return item.content;
+
+  const content = item.content;
+  if (typeof content === "string") {
+    return content;
   }
+
+  // OpenAI-style content blocks: { content: [{ type: "text", text: "..." }] }
+  if (Array.isArray(content)) {
+    const parts = content
+      .map((p) => {
+        const block = p as Record<string, unknown>;
+        if (block?.type === "text" && typeof block.text === "string") {
+          return block.text;
+        }
+        return null;
+      })
+      .filter((v): v is string => typeof v === "string");
+
+    if (parts.length > 0) {
+      return parts.join("\n");
+    }
+  }
+
   return undefined;
 }
