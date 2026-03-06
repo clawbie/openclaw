@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { extractToolCards } from "../chat/tool-cards.ts";
 import { handleChatEvent, loadChatHistory, type ChatEventPayload, type ChatState } from "./chat.ts";
 
 function createState(overrides: Partial<ChatState> = {}): ChatState {
@@ -19,6 +20,30 @@ function createState(overrides: Partial<ChatState> = {}): ChatState {
     ...overrides,
   };
 }
+
+describe("extractToolCards", () => {
+  it("extracts tool_result text from nested content array", () => {
+    const msg = {
+      role: "assistant",
+      content: [
+        {
+          type: "tool_result",
+          name: "shell",
+          content: [{ type: "text", text: "hello from tool" }],
+        },
+      ],
+    };
+
+    const cards = extractToolCards(msg);
+    expect(cards).toEqual([
+      {
+        kind: "result",
+        name: "shell",
+        text: "hello from tool",
+      },
+    ]);
+  });
+});
 
 describe("handleChatEvent", () => {
   it("returns null when payload is missing", () => {

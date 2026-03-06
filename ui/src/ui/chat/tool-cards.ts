@@ -146,11 +146,36 @@ function coerceArgs(value: unknown): unknown {
 }
 
 function extractToolText(item: Record<string, unknown>): string | undefined {
+  // Common shapes:
+  // - { type: 'tool_result', text: '...' }
+  // - { type: 'tool_result', content: '...' }
+  // - { type: 'tool_result', content: [{ type: 'text', text: '...' }, ...] }
   if (typeof item.text === "string") {
     return item.text;
   }
   if (typeof item.content === "string") {
     return item.content;
   }
+  if (Array.isArray(item.content)) {
+    const parts = item.content
+      .map((p) => {
+        const x = p as Record<string, unknown>;
+        if (x.type === "text" && typeof x.text === "string") {
+          return x.text;
+        }
+        if (typeof x.text === "string") {
+          return x.text;
+        }
+        if (typeof x.content === "string") {
+          return x.content;
+        }
+        return null;
+      })
+      .filter((v): v is string => typeof v === "string");
+    if (parts.length > 0) {
+      return parts.join("\n");
+    }
+  }
+
   return undefined;
 }
