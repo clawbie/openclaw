@@ -303,6 +303,28 @@ describe("handleControlUiHttpRequest", () => {
     });
   });
 
+  it("serves hardlinked assets inside control-ui root (pnpm global installs)", async () => {
+    await withControlUiRoot({
+      fn: async (tmp) => {
+        const { filePath } = await writeAssetFile(tmp, "hardlink.txt", "hardlink-ok\n");
+        const linkPath = path.join(path.dirname(filePath), "hardlink-copy.txt");
+
+        // Create a hardlink to simulate pnpm's global-store layout.
+        await fs.link(filePath, linkPath);
+
+        const { res, end, handled } = runControlUiRequest({
+          url: "/assets/hardlink-copy.txt",
+          method: "GET",
+          rootPath: tmp,
+        });
+
+        expect(handled).toBe(true);
+        expect(res.statusCode).toBe(200);
+        expect(String(end.mock.calls[0]?.[0] ?? "")).toBe("hardlink-ok\n");
+      },
+    });
+  });
+
   it("rejects symlinked SPA fallback index.html outside control-ui root", async () => {
     await withControlUiRoot({
       fn: async (tmp) => {

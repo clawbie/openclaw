@@ -263,6 +263,10 @@ function resolveSafeControlUiFile(
     rootRealPath: rootReal,
     boundaryLabel: "control ui root",
     skipLexicalRootCheck: true,
+    // Control UI assets may be shipped as hardlinks (e.g. pnpm global installs).
+    // This root is a trusted, explicitly resolved directory, so allow hardlinks
+    // to avoid false 404s for legitimate static assets.
+    rejectHardlinks: false,
   });
   if (!opened.ok) {
     if (opened.reason === "io") {
