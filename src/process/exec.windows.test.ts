@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const spawnMock = vi.hoisted(() => vi.fn());
 const execFileMock = vi.hoisted(() => vi.fn());
+const existsSyncMock = vi.hoisted(() => vi.fn());
 
 vi.mock("node:child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:child_process")>();
@@ -10,6 +11,14 @@ vi.mock("node:child_process", async (importOriginal) => {
     ...actual,
     spawn: spawnMock,
     execFile: execFileMock,
+  };
+});
+
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    existsSync: existsSyncMock,
   };
 });
 
@@ -68,6 +77,41 @@ describe("windows command wrapper behavior", () => {
     spawnMock.mockReset();
     execFileMock.mockReset();
     vi.restoreAllMocks();
+  });
+
+  it("quotes args and enables windowsVerbatimArguments for node + npm-cli.js when argv contains spaces", async () => {
+    const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    const comspec = process.env.ComSpec ?? "cmd.exe";
+
+
+    existsSyncMock.mockReturnValue(true);
+
+    spawnMock.mockImplementation(
+      (_command: string, _args: string[], _options: Record<string, unknown>) => createMockChild(),
+    );
+
+    try {
+      await runCommandWithTimeout(
+        ["node.exe", "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js", "pack", "foo"],
+        { timeoutMs: 1000 },
+      );
+
+      const captured = spawnMock.mock.calls[0] as SpawnCall | undefined;
+      if (!captured) {
+        throw new Error("expected spawn to be called");
+      }
+
+      expect(captured[0]).toBe("node.exe");
+      expect(captured[2].windowsVerbatimArguments).toBe(true);
+
+      // argv[0] becomes `node.exe`, argv[1] is the npm-cli script
+      // argv[0] is the npm-cli script; it should be quoted because it contains spaces.
+      expect(captured[1][0]).toBe('"C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js"');
+    } finally {
+      platformSpy.mockRestore();
+      // Make sure we didn't accidentally route through cmd.exe wrapper.
+      expect(spawnMock.mock.calls[0]?.[0]).not.toBe(comspec);
+    }
   });
 
   it("wraps .cmd commands via cmd.exe in runCommandWithTimeout", async () => {

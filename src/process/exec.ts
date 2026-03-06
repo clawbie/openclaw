@@ -34,6 +34,68 @@ function escapeForCmdExe(arg: string): string {
   return `"${arg.replace(/"/g, '""')}"`;
 }
 
+function quoteWindowsCreateProcessArg(arg: string): string {
+  // Quote an argument per Windows CreateProcess parsing rules.
+  // Based on MS C runtime parsing semantics used by many programs.
+  if (arg === "") {
+    return '""';
+  }
+  const needsQuotes = /[\t\s"]/.test(arg);
+  if (!needsQuotes) {
+    return arg;
+  }
+
+  let out = '"';
+  let backslashes = 0;
+  for (let i = 0; i < arg.length; i++) {
+    const ch = arg[i] ?? "";
+    if (ch === "\\") {
+      backslashes++;
+      continue;
+    }
+    if (ch === '"') {
+      // Escape all backslashes, then the quote.
+      out += "\\".repeat(backslashes * 2 + 1);
+      out += '"';
+      backslashes = 0;
+      continue;
+    }
+    if (backslashes) {
+      out += "\\".repeat(backslashes);
+      backslashes = 0;
+    }
+    out += ch;
+  }
+  // Escape trailing backslashes before closing quote.
+  if (backslashes) {
+    out += "\\".repeat(backslashes * 2);
+  }
+  out += '"';
+  return out;
+}
+
+function quoteWindowsArgIfNeeded(arg: string): string {
+  return /[\t\s"]/.test(arg) ? quoteWindowsCreateProcessArg(arg) : arg;
+}
+
+function hasAnySpaceArg(argv: string[]): boolean {
+  return argv.some((a) => /\s/.test(a));
+}
+
+function looksLikeNpmCliScript(arg: string): boolean {
+  // Match typical installed layout: <nodeDir>\node_modules\npm\bin\npm-cli.js
+  // Accept both `\` and `/` since tests may run on non-Windows hosts.
+  return /[\\/]npm[\\/]bin[\\/](npm|npx)-cli\.js$/i.test(arg);
+}
+
+function isNodeExecutable(resolvedCommand: string): boolean {
+  const lower = resolvedCommand.toLowerCase();
+  if (lower === "node" || lower === "node.exe") {
+    return true;
+  }
+  return /(^|[\\/])node\.exe$/i.test(resolvedCommand);
+}
+
 function buildCmdExeCommandLine(resolvedCommand: string, args: string[]): string {
   return [escapeForCmdExe(resolvedCommand), ...args.map(escapeForCmdExe)].join(" ");
 }
@@ -47,7 +109,7 @@ function resolveNpmArgvForWindows(argv: string[]): string[] | null {
   if (process.platform !== "win32" || argv.length === 0) {
     return null;
   }
-  const basename = path
+  const basename = path.win32
     .basename(argv[0])
     .toLowerCase()
     .replace(/\.(cmd|exe|bat)$/, "");
@@ -55,8 +117,8 @@ function resolveNpmArgvForWindows(argv: string[]): string[] | null {
   if (!cliName) {
     return null;
   }
-  const nodeDir = path.dirname(process.execPath);
-  const cliPath = path.join(nodeDir, "node_modules", "npm", "bin", cliName);
+  const nodeDir = path.win32.dirname(process.execPath);
+  const cliPath = path.win32.join(nodeDir, "node_modules", "npm", "bin", cliName);
   if (!fs.existsSync(cliPath)) {
     return null;
   }
@@ -224,22 +286,35 @@ export async function runCommandWithTimeout(
   const stdio = resolveCommandStdio({ hasInput, preferInherit: true });
   const finalArgv = process.platform === "win32" ? (resolveNpmArgvForWindows(argv) ?? argv) : argv;
   const resolvedCommand = finalArgv !== argv ? (finalArgv[0] ?? "") : resolveCommand(argv[0] ?? "");
+
+  const isNpmCliViaNode =
+    process.platform === "win32" &&
+    isNodeExecutable(resolvedCommand) &&
+    looksLikeNpmCliScript(String(finalArgv[1] ?? ""));
+
+  // Some Windows setups (notably default Node installer under `C:\\Program Files\\...`) have
+  // space-containing paths that can be mis-escaped when spawning `node.exe <npm-cli.js> ...`.
+  // Use verbatim argument passing and pre-quote per CreateProcess rules to preserve argv.
+  const shouldUseQuotedVerbatimArgs = isNpmCliViaNode && hasAnySpaceArg(finalArgv);
+
   const useCmdWrapper = isWindowsBatchCommand(resolvedCommand);
-  const child = spawn(
-    useCmdWrapper ? (process.env.ComSpec ?? "cmd.exe") : resolvedCommand,
-    useCmdWrapper
-      ? ["/d", "/s", "/c", buildCmdExeCommandLine(resolvedCommand, finalArgv.slice(1))]
-      : finalArgv.slice(1),
-    {
-      stdio,
-      cwd,
-      env: resolvedEnv,
-      windowsVerbatimArguments: useCmdWrapper ? true : windowsVerbatimArguments,
-      ...(shouldSpawnWithShell({ resolvedCommand, platform: process.platform })
-        ? { shell: true }
-        : {}),
-    },
-  );
+  const spawnArgs = useCmdWrapper
+    ? ["/d", "/s", "/c", buildCmdExeCommandLine(resolvedCommand, finalArgv.slice(1))]
+    : shouldUseQuotedVerbatimArgs
+      ? finalArgv.slice(1).map((a) => quoteWindowsArgIfNeeded(String(a)))
+      : finalArgv.slice(1);
+
+  const child = spawn(useCmdWrapper ? (process.env.ComSpec ?? "cmd.exe") : resolvedCommand, spawnArgs, {
+    stdio,
+    cwd,
+    env: resolvedEnv,
+    windowsVerbatimArguments: useCmdWrapper
+      ? true
+      : shouldUseQuotedVerbatimArgs
+        ? true
+        : windowsVerbatimArguments,
+    ...(shouldSpawnWithShell({ resolvedCommand, platform: process.platform }) ? { shell: true } : {}),
+  });
   // Spawn with inherited stdin (TTY) so tools like `pi` stay interactive when needed.
   return await new Promise((resolve, reject) => {
     let stdout = "";
