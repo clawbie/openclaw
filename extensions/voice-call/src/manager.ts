@@ -270,6 +270,18 @@ export class CallManager {
   }
 
   private maybeSpeakInitialMessageOnAnswered(call: CallRecord): void {
+    // When streaming is enabled, the webhook media-stream onConnect handler
+    // will speak the initial message once the stream is ready.
+    //
+    // On outbound calls, call.answered can be processed on the same request
+    // that returns the <Connect><Stream> TwiML, meaning the stream isn't
+    // registered yet. If we attempt to speak here, TwilioProvider.playTts may
+    // fall back to TwiML <Say>, which consumes and clears the initial message
+    // before the media stream connects.
+    if (this.config.streaming?.enabled) {
+      return;
+    }
+
     const initialMessage =
       typeof call.metadata?.initialMessage === "string" ? call.metadata.initialMessage.trim() : "";
 
