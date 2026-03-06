@@ -77,7 +77,7 @@ Fix:
 
 Reference:
 
-- Xfinity Advanced Security help: https://www.xfinity.com/support/articles/using-xfinity-xfi-advanced-security
+- Xfinity Advanced Security help: <https://www.xfinity.com/support/articles/using-xfinity-xfi-advanced-security>
 
 ## Decision tree
 
